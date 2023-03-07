@@ -1,13 +1,47 @@
-from flask import Flask, jsonify
-import os
+from flask import Flask, render_template
+from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
 
 
 @app.route('/')
 def index():
-    return jsonify({"Choo Choo": "Welcome to your Flask app 🚅"})
+    return render_template('index.html')
+
+
+@socketio.on('open')
+def on_open(message):
+    endpoint = 'wss://stream.binance.com:9443/ws'
+    # endpoint = 'wss://api.gemini.com/v1/marketdata/BTCUSD'
+    our_msg = json.dumps({
+        'method': 'SUBSCRIBE',
+        'params': ['btcusdt@ticker'],
+        'id': 1
+    })
+    emit('open', {'data': message['data']})
+
+
+# @socketio.on('my event')
+# def test_message(message):
+#     emit('my response', {'data': message['data']})
+
+
+@socketio.on('my broadcast event')
+def test_message(message):
+    emit('my response', {'data': message['data']}, broadcast=True)
+
+
+@socketio.on('connect')
+def test_connect():
+    emit('my response', {'data': 'Connected'})
+
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=os.getenv("PORT", default=5000))
+    socketio.run(app)
